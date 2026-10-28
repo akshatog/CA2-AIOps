@@ -1,0 +1,47 @@
+name: Wine Quality CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements*.txt
+            artifacts/requirements-model.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Validate dependencies and test API
+        run: |
+          python -m pip check
+          python -m pytest -q
+      - name: Build Docker image
+        run: docker build -t wine-quality-api:ci .
+      - name: Test API through Docker
+        run: |
+          docker run -d --name wine-api -p 8000:8000 wine-quality-api:ci
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/health >/dev/null; then
+              curl --fail --silent http://127.0.0.1:8000/model-info
+              python verify_prediction.py
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not become ready."
+          exit 1
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs wine-api || true
+      - name: Remove test container
+        if: always()
+        run: docker rm -f wine-api || true

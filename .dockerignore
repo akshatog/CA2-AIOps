@@ -1,0 +1,13 @@
+.venv/
+.cache/
+.git/
+.github/
+.vscode/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.zip
+*.ipynb
+*.log
+work/
+outputs/

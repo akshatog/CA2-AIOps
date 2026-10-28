@@ -1,0 +1,2 @@
+-r artifacts/requirements-model.txt
+-r requirements-api.txt
